@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+projects/
+.env
+*.mp4
+*.wav
+node_modules/

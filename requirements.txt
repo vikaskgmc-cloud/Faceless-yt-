@@ -1,0 +1,8 @@
+anthropic
+edge-tts
+flask
+gunicorn
+numpy
+opencv-python-headless
+pillow
+# also needs ffmpeg on PATH (Replit: see replit.nix)

@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% block body %}
+<h2>Review &amp; approve</h2><small>{{script.title}} - one screen, one approval. Nothing is voiced or rendered until you approve.</small>
+{% if job and job.running %}<div class="flash">A {{job.kind}} job is running.</div>{% endif %}
+<form method="post"><input type="hidden" name="csrf" value="{{csrf}}">
+
+<div class="card"><h2>1. Claims that need your decision ({{decide|length}})</h2>
+<small>One source only, a party's allegation, conflicting figures, or a number the quote lacks. Open the source, compare, choose.</small>
+{% for f in decide %}<div class="fact"><b>{{f.id}}</b> {{f.claim}}<br><span class="q">"{{f.quote}}"</span><br>
+<small>{{f.source_url}}<br><b>{{explain(f)}}</b></small><br>
+<label><input type="radio" name="d_{{f.id}}" value="ok" style="width:auto" required> I checked it against the source - keep</label> &nbsp;
+<label><input type="radio" name="d_{{f.id}}" value="drop" style="width:auto"> Drop</label></div>
+{% else %}<p>None - every claim is in the batch below.</p>{% endfor %}</div>
+
+<div class="card"><h2>2. Batch: primary or independently confirmed ({{batch|length}})</h2>
+<small>Approved together unless you tick "drop". Open the list and read it - confirmation by another outlet is strong evidence, not proof.</small>
+<details><summary>Show all {{batch|length}} claims</summary>
+{% for f in batch %}<div class="fact"><b>{{f.id}}</b> {{f.claim}}<br><span class="q">"{{f.quote}}"</span><br>
+<small>{{f.source_url}} - {{explain(f)}}</small><br><label><input type="checkbox" name="drop_batch" value="{{f.id}}" style="width:auto"> drop</label></div>{% endfor %}</details></div>
+
+<div class="card"><h2>3. Script ({{script.scenes|length}} scenes)</h2>
+{% if script.problems %}<div class="flash"><b>{{script.problems|length}} warnings</b><br><small>{{script.problems[:12]|join(' · ')}}</small></div>{% endif %}
+<details><summary>Read the narration</summary>{% for sc in script.scenes %}<p><small>[{{sc.id}}] {{sc.act}} · facts {{sc.fact_ids|join(',') or '-'}}</small><br>{{sc.narration}}</p>{% endfor %}</details>
+<p><a href="/p/{{s.slug}}#script">Edit lines on the project page</a> (editing un-approves the script).</p></div>
+
+{% if shots %}<div class="card"><h2>4. Shot list</h2>
+<p>{{shots.shots}} shots, about {{shots.length}}. Visual types: {% for k,v in shots.visual_types.items() %}{{k}} {{v}}{{ ', ' if not loop.last }}{% endfor %}.</p>
+{% if shots.no_music_tracks %}<div class="flash">No music tracks found - add licensed tracks to assets/music.</div>{% endif %}
+{% if shots.too_long %}<div class="flash">{{shots.too_long}} shots stay on screen too long.</div>{% endif %}
+{% if shots.missing_assets %}<div class="flash">Missing images: {{shots.missing_assets|join(', ')}}</div>{% endif %}
+<a class="btn sec" href="/p/{{s.slug}}/download/shotlist">Download shot list (CSV)</a></div>{% endif %}
+
+<div class="card"><label><input type="checkbox" name="confirm" value="yes" style="width:auto"> I read the claims and the script and checked what needed checking. Approving starts voice and the 4K render.</label>
+<p><button>Approve and produce video</button></p></div></form>{% endblock %}

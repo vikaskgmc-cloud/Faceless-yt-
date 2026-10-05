@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block body %}
+<div class="card"><h2>New case study</h2><form method="post" action="/new">
+<input type="hidden" name="csrf" value="{{csrf}}"><p><input name="slug" placeholder="short-name e.g. s2-capital" required></p>
+<p><input name="topic" placeholder="Topic, e.g. How S2 Capital's syndication collapsed"></p><button>Create</button></form></div>
+{% for i in items %}<div class="card row"><div style="flex:1"><a href="/p/{{i.slug}}"><b>{{i.title}}</b></a><br><small>{{i.topic}}</small></div>
+<span class="pill">{{i.verified}}/{{i.facts}} facts</span><span class="pill {{'ok' if i.approved}}">{{'approved' if i.approved else 'draft'}}</span>
+<span class="pill {{'ok' if i.video}}">{{'video ready' if i.video else 'no video'}}</span></div>{% endfor %}{% endblock %}
