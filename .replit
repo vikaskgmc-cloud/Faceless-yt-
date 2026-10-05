@@ -1,0 +1,14 @@
+run = "gunicorn studio:app --bind 0.0.0.0:5000 --workers 1 --threads 8 --timeout 0"
+entrypoint = "studio.py"
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "gunicorn studio:app --bind 0.0.0.0:5000 --workers 1 --threads 8 --timeout 0"]
+deploymentTarget = "vm"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

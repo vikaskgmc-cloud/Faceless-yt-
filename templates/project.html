@@ -1,0 +1,60 @@
+{% extends "base.html" %}{% block body %}
+<h2>{{s.title}}</h2><small>{{s.topic}}</small>
+{% macro stepform(step, label, extra='') %}<form method="post" action="/p/{{s.slug}}/run/{{step}}" style="display:inline"><input type="hidden" name="csrf" value="{{csrf}}">{{extra|safe}}<button {{'disabled' if job and job.running}}>{{label}}</button></form>{% endmacro %}
+
+{% if job %}<div class="card" id="jobcard"><b>Job: {{job.kind}}</b> <span id="jst" class="pill">{{'running' if job.running else ('done' if job.rc==0 else 'failed')}}</span>
+<div class="bar"><i id="jbar"></i></div><pre id="jlog">{{job.tail}}</pre>
+{% if job.running %}<form method="post" action="/p/{{s.slug}}/job/stop"><input type="hidden" name="csrf" value="{{csrf}}"><button class="sec">Stop</button></form>{% endif %}</div>{% endif %}
+
+{% if s.video %}<div class="card"><h2>Finished video</h2>
+<video controls preload="metadata" src="/p/{{s.slug}}/stream"></video>
+<p class="row"><a class="btn" href="/p/{{s.slug}}/download/video">Download MP4 ({{'%.0f'|format(size/1048576)}} MB)</a>
+<a class="btn sec" href="/p/{{s.slug}}/download/description">Description + chapters</a>
+<a class="btn sec" href="/p/{{s.slug}}/download/script">Script</a></p>
+<small>Upload the MP4 to YouTube Studio; paste the description (it has chapter timestamps and sources).</small></div>{% endif %}
+
+<div class="card"><h2>Automatic mode</h2>
+<p>Researches the web, extracts and cross-checks claims, writes the script and shot list, then waits for your single review. Nothing is voiced or rendered until you approve.</p>
+<p class="row">{{stepform('auto','Auto research + draft','<select name="minutes" style="width:auto"><option>20</option><option selected>22</option><option>24</option><option>25</option></select> min ')|replace('/run/auto','/auto')}}
+{% if s.facts and s.script %}<a class="btn" href="/p/{{s.slug}}/review">Open review screen</a>{% endif %}
+{% if s.shots %}<a class="btn sec" href="/p/{{s.slug}}/download/shotlist">Shot list (CSV)</a>{% endif %}</p></div>
+
+<div class="card"><h2>1. Sources ({{s.sources}})</h2>
+<form method="post" action="/p/{{s.slug}}/source"><input type="hidden" name="csrf" value="{{csrf}}">
+<p><input name="url" placeholder="Source URL (filing, court document, article)"></p>
+<p><textarea name="text" placeholder="Paste the full text of that source"></textarea></p><button class="sec">Add source</button></form>
+<p>{{stepform('facts','Extract facts with Claude')}}</p>
+<form method="post" action="/p/{{s.slug}}/media" enctype="multipart/form-data" class="row"><input type="hidden" name="csrf" value="{{csrf}}">
+<input type="file" name="file" style="flex:1"><button class="sec">Upload image (documents, photos you have rights to)</button></form>
+{% if media %}<small>Media: {{media|join(', ')}}</small>{% endif %}</div>
+
+<div class="card"><h2>2. Verify facts ({{s.verified}}/{{s.facts}})</h2>
+{% if facts %}<form method="post" action="/p/{{s.slug}}/verify"><input type="hidden" name="csrf" value="{{csrf}}">
+{% for f in facts %}<div class="fact"><b>{{f.id}}</b> {{f.claim}}<br><span class="q">“{{f.quote}}”</span><br><small>{{f.source_url}}</small><br>
+<label><input type="checkbox" name="ok" value="{{f.id}}" style="width:auto" {{'checked' if f.verified}}> I checked this against the source</label>
+&nbsp;<label><input type="checkbox" name="drop" value="{{f.id}}" style="width:auto"> drop</label></div>{% endfor %}
+<p><button>Save verification</button></p></form>{% else %}<small>No facts yet.</small>{% endif %}</div>
+
+<div class="card"><h2>3. Script</h2>
+<p class="row">{{stepform('script','Write script with Claude','<select name="minutes" style="width:auto"><option>20</option><option selected>22</option><option>24</option><option>25</option></select> min ')}}</p>
+{% if script %}{% if script.problems %}<div class="flash"><b>{{script.problems|length}} warnings</b><br><small>{{script.problems[:8]|join(' · ')}}</small></div>{% endif %}
+<form method="post" action="/p/{{s.slug}}/script"><input type="hidden" name="csrf" value="{{csrf}}">
+{% for sc in script.scenes %}<div class="fact"><small>[{{sc.id}}] {{sc.act}} · facts {{sc.fact_ids|join(',') or '-'}} · {{sc.visuals|map(attribute='type')|join(' / ')}}</small>
+<textarea name="n{{sc.id}}" style="min-height:60px">{{sc.narration}}</textarea></div>{% endfor %}
+<button class="sec">Save edits</button></form>
+<form method="post" action="/p/{{s.slug}}/approve" class="row" style="margin-top:12px"><input type="hidden" name="csrf" value="{{csrf}}">
+<label><input type="checkbox" name="confirm" value="yes" style="width:auto"> I read the whole script and checked every figure and quote</label>
+<button {{'disabled' if s.approved}}>{{'Approved ✓' if s.approved else 'Approve script'}}</button></form>{% endif %}</div>
+
+<div class="card"><h2>4. Voice + render</h2>
+<p>Music tracks found: {{music|length}}{% if not music %} <small>(add licensed .mp3 files to assets/music — render works without, but music is part of the brief)</small>{% endif %}</p>
+<p class="row">{{stepform('voice','Generate voiceover')}} {{stepform('render','Render video (hours at 4K)')}}</p>
+<small>Voice and render stay locked until the script is approved. Rendering resumes where it stopped if interrupted.</small></div>
+
+<script>
+const slug="{{s.slug}}";{% if job and job.running %}
+(function poll(){fetch('/p/'+slug+'/job').then(r=>r.json()).then(j=>{
+ document.getElementById('jlog').textContent=j.tail;const m=[...j.tail.matchAll(/(\d+(?:\.\d+)?)%/g)].pop();
+ if(m)document.getElementById('jbar').style.width=m[1]+'%';
+ if(j.running)setTimeout(poll,3000);else location.reload();});})();{% endif %}
+</script>{% endblock %}
